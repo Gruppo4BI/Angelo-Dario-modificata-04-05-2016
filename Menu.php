@@ -1,24 +1,31 @@
 <?php
 session_start();
+$id=$_GET['id'];
+
 define("INCLUDING", 'TRUE');
 include('config.php');
-//include_once 'configurazioneDB.php';		
-include_once 'confDatabase.php';
+require_once (METHODS_PATH . '/idea.card.php');
+//include_once 'configurazioneDB.php';	
+require_once (METHODS_PATH . '/azienda.class.php');
+include_once 'database.php'
+	;
+
 $db = Database::getInstance();
 $mysqli = $db->getConnection();
 
-// controllo se ¬è stato impostato l id per evitare che accedano direttamente senza fare il login
-if( !isset($_SESSION['id']) )
+
+// controllo se √É‚Äö√Ø¬ø¬Ω stato impostato l id per evitare che accedano direttamente senza fare il login
+if( !isset($id) )
 	header("Location: index.php");
 	
 // Ricavo tutte le informazioni sull azienda che mi interessa tramite l id
-$sql = "SELECT * FROM UTENTI JOIN AZIENDE ON ID_UTENTE=ID WHERE ID='".$_SESSION['id']."'";
+$sql = "SELECT * FROM UTENTI JOIN AZIENDE ON ID_UTENTE=ID WHERE ID='".$id."'";
 $result=$mysqli->query($sql);
 $dati=$result->fetch_assoc();
 // tutti i dati son messi nelll array dati
 
 //prendo tutte le informazioni riguradanti i contatti
-$SQLcont="SELECT * FROM CONTATTI JOIN AZIENDE ON ID_UTENTE=PROPRIETARIO WHERE PROPRIETARIO='".$_SESSION['id']."'";
+$SQLcont="SELECT * FROM CONTATTI JOIN AZIENDE ON ID_UTENTE=PROPRIETARIO WHERE PROPRIETARIO='".$id."'";
 $result_cont=$mysqli->query($SQLcont);
 // tutti i valori saranno memorizzati nell array dati_cont
 $dati_cont=$result_cont->fetch_assoc();
@@ -30,17 +37,32 @@ $result_prov=$mysqli->query($SQLprov);
 $dati_prov=$result_prov->fetch_assoc();
 
 // per conoscere le persone che lavorano nell azienda
-$SQLpers="SELECT NOME,COGNOME FROM PERSONE JOIN AZIENDE A ON A.ID_UTENTE=AZIENDA WHERE AZIENDA='".$_SESSION['id']."'";
+$SQLpers="SELECT ID_UTENTE,NOME,COGNOME,INFO,FOTO,RUOLO FROM PERSONE WHERE AZIENDA='".$id."'";
 $result_pers=$mysqli->query($SQLpers);
+
+
 //per le idee sviluppate dagli utenti dell azienda
-$SQLidee="SELECT TITOLO,P.ID_UTENTE FROM IDEE JOIN PERSONE P ON CREATORE=P.ID_UTENTE JOIN AZIENDE A ON AZIENDA=A.ID_UTENTE WHERE A.ID_UTENTE='".$_SESSION['id']."'";
-$result_idee=$mysqli->query($SQLidee);
+$SQLideeU="SELECT TITOLO,P.ID_UTENTE,I.DESCRIZIONE FROM IDEE I JOIN PERSONE P ON CREATORE=P.ID_UTENTE JOIN AZIENDE A ON AZIENDA=A.ID_UTENTE WHERE A.ID_UTENTE='".$id."'";
+$result1_ideeU=$mysqli->query($SQLideeU);
+$ideeU=mysqli_fetch_assoc($result1_ideeU);
+
+$num_ideeU=count($ideeU["TITOLO"]);
+$result_ideeU=$mysqli->query($SQLideeU);
+
+
+$SQLideeA="SELECT TITOLO,DESCRIZIONE FROM IDEE WHERE CREATORE='".$id."'";
+$result_idee1=$mysqli->query($SQLideeA);
+$ideeA=mysqli_fetch_assoc($result_idee1);
+$num_ideeA=count($ideeA["TITOLO"]);
+$result_idee=$mysqli->query($SQLideeA);
+
+//echo $SQLideeA;
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-  <title> <?php echo  $data['RAGIONE_SOCIALE']?> | Borsa delle Idee</title>
+  <title> <?php echo  $dati['RAGIONE_SOCIALE']?> | Borsa delle Idee</title>
   <?php include(TEMPLATES_PATH.'/head.php'); ?>
 </head>
 
@@ -51,28 +73,45 @@ $result_idee=$mysqli->query($SQLidee);
 <?php include (TEMPLATES_PATH.'/navbar.php');?>	
 <div class="col-md-3">
 		<div class="user-data well panel panel-default">
-		<img class="profile-user-img img-responsive center-block" src="immagini\nala.jpg">
-			<?php/*
-			if($data['FOTO'])
-				echo "img/profile/". $data['FOTO'];
+		<img class="profile-user-img img-responsive center-block" src='
+			<?php
+			if($dati['FOTO'])
+				echo "img/profile/". $dati['FOTO'];
 			else
-				echo 'img/profile/default.png';*/
+				echo 'img/profile/default.png';
 			?>
 			' alt='Foto profilo'>
 			<h5 class="text-capitalize"><?php echo $dati['RAGIONE_SOCIALE']?></h5>
 			
-			<h6><?php if($dati['NAZIONE']){
-        	echo $dati['NAZIONE'];
-			if($dati['CITTA'])
-					echo " presso ".$dati['CITTA'];}
-        	else echo "\r\n";?></h6>
-          	<hr>
-	       		<p> <b><i class='fa fa-lightbulb-o margin-r-5'></i>Idee</b>
+			<ul class="list-group">
+			<li class="list-group-item">
+			<b>Partita Iva:</b> <a class="pull-right"><?php echo $dati['PARTITA_IVA'];?></a>
+			</li>
+			<li class="list-group-item">
+			<b>Idee pubblicate Azienda</b> <a class="pull-right"><?php echo $num_ideeA;?></a>
+			            </li>
+			<li class="list-group-item">
+			<b>Idee pubblicate Utenti</b> <a class="pull-right"><?php echo $num_ideeU;?></a>
+			            </li>
+			         <!--    <li class="list-group-item">
+			            	<b>Idee seguite</b> <a class="pull-right"><?php echo $nfollowed;?></a>
+			            </li>
+			            <li class="list-group-item">
+			            	<b>Reputazione</b> <a class="pull-right">-->
+			            	<?php 
+			                     // echo $rep;?><!-- </a>
+			            </li>-->
+			        </ul>
+			
+			
+			 </h6>
+ <!-- >         	<hr>
+	       		<p> <b><i class='fa fa-lightbulb-o margin-r-5'></i>Idee</b> -->
 	<?php	echo "<br>";
-	 while ($row1=mysqli_fetch_assoc($result_idee)){
-        echo $row1['TITOLO']."<br>";
+	// while ($row1=mysqli_fetch_assoc($result_idee)){
+      //  echo $row1['TITOLO']."<br>";}
         
-	 }
+	 
   					     ?>
   					     </p>
   					</a>
@@ -81,24 +120,27 @@ $result_idee=$mysqli->query($SQLidee);
             	<b><i class='fa fa-envelope margin-r-5'></i>Email</b> 
             	<?php 
             			echo "<br>";
-                      echo $dati['EMAIL'];?></a>
+                      echo $dati['EMAIL'];
+                      	?></a>
 </p>
 <hr>
         <?php 
-        if(isset($_SESSION['ID'])){
-        	
-        			echo '<a href="#" class="btn btn-primary btn-block"><b>Contatta</b></a>';
+		if(isset($_SESSION['loggeduser']) && $_SESSION['loggeduser']->isLoggedIn()){
+        	if ($_SESSION["loggeduser"]->getid() !== $id){?>
+        		
+        		<a href="#" class="btn btn-primary btn-block"><b>Contatta</b></a>
+        		
+	    	<?php }
         }
 	    
-	    ?>	
+	    ?>
 	    <!-- AddToAny BEGIN -->
 		<a class="a2a_dd btn btn-primary btn-block" href="https://www.addtoany.com/share">Condividi</a>
 		<script async src="https://static.addtoany.com/menu/page.js"></script>
 		<!-- AddToAny END -->
 		</div>
 			<div class="user-info well panel panel-default">
-			 <?php 
-                     	if( !($dati_cont['TELEFONO']==0) ) // gli if mi permettono di non mostrare nulla nel caso questi campi non siano presnti nel db
+			 <?php
                 echo "<strong><i class='fa fa-phone margin-r-5'></i> Telefono</strong>
                   <p>".$dati_cont['TELEFONO']."
                   </p><hr>";	?>
@@ -140,7 +182,7 @@ $result_idee=$mysqli->query($SQLidee);
                   </p>";	?>                         	                 	
 				</div>
 				  <div class="container"> 
-     		<a href="modificaAz.php" class="btn btn-info" role="button">Modifica</a>
+   
      		</div>
 		</div>
 
@@ -156,70 +198,102 @@ $result_idee=$mysqli->query($SQLidee);
 						<li><a href="#IdeeUtenti" data-toggle='tab'>degli Utenti</a></li>		
 				  	</ul>
 				  	</li>
-				  	<li><a href="#Sede" data-toggle='tab'><i class='fa fa-home margin-r-5'></i> Sede</a></li>	
+				  	<li class="active"><a href="#Sede" data-toggle='tab'><i class='fa fa-home margin-r-5'></i> Sede</a></li>	
 				  	<li><a href="#Utenti" data-toggle='tab'><i class='fa fa-user margin-r-5'></i> Utenti</a></li>	
 				  	</ul>
 				  	
 <!--  Quello che si visualizza se clicchiamo su SEDE -->
 		<div class="panel-body main-panel">	
-		<div class="tab-content">			  	
+		<div class="tab-content">
+		<div id="home" class="tab-pane fade in active">
+					  	
 		        <div class="tab-pane" id="Sede">
-		        <?php 
-		         echo "L'azienda:<b> ".$dati['RAGIONE_SOCIALE']."</b> ha sede in ".$dati['NAZIONE'].".";
-		       echo "<br>";
-		       echo "La sede è a ".$dati['CITTA']." che è in provincia di ".$dati_prov['NOME'].". La regione è :".$dati['REGIONE'];
-		        echo "<br>";
-		        echo "L'indirizzo è: <b>".$dati['INDIRIZZO']."</b><br>";
-		        echo "cap:".$dati['CAP']."partita iva: ".$dati['PARTITA_IVA'];
-		       ?>
-		       </div>
+				<div class="row">
+   				    <div class="col-sm-12">
+    			      <div class="well">
+     			     <h4><i class='fa fa-globe margin-r-5'></i> Nazione </h4>
+      			      <p><?php echo $dati['NAZIONE']?></p> 
+      			      <hr>
+      			      <h4><i class='fa fa-map-marker margin-r-5'></i>Regione</h4>
+      			      <p><?php echo $dati['REGIONE']?></p> 
+      			      <hr>
+      			      <?php  if( !($dati_prov['NOME']==0) )
+       		 	   echo "<h4><i class='fa fa-map-marker margin-r-5'></i>Provincia</h4>
+       		 	    <p>".$dati_prov['NOME']."</p>
+       		 	    <hr>";
+       		 	    ?>
+       		 		<h4><i class='fa fa-map-marker margin-r-5'></i> Citta </h4>
+      			      <p><?php echo $dati['CITTA']?></p> 
+      			      <hr>
+      			      <h4><i class='fa fa-map-marker margin-r-5'></i>Indirizzo</h4>
+      			      <p><?php echo $dati['INDIRIZZO']." ".$dati['NUMERO_CIVICO']?></p> 
+      			      <hr>
+       		 	    <h4><i class='fa fa-map-marker margin-r-5'></i>Cap</h4>
+       		 	    <p><?php echo $dati['CAP']?></p>  
+       		  	 </div>
+      		  </div>
+				</div>
+	   </div>
 		     <!-- Quello che si visualizza cliccando su UTENTI -->  
 	        <div class="tab-pane" id="Utenti">		       
 				<div class="col-sm-12">
-					   <?php while($row=mysqli_fetch_assoc($result_pers)){
-   							   echo ' <div class="row">
-     							   <div class="col-sm-3">
+					   <?php 
+					   		while($utenti=mysqli_fetch_assoc($result_pers)){?>
+   							   <div class="row">
+     							   <div class="col-sm-4">
       								    <div class="well">
-     								      <p>'.$row["NOME"].$row["COGNOME"].'</p>
-     								      <img src="bandmember.jpg" class="img-circle" height="55" width="55" alt="Avatar">
+     								      <a href='<?php echo"profile.php?id=".$utenti["ID_UTENTE"];?>'> <h6><b><?php echo $utenti["NOME"].$utenti["COGNOME"] ?></b></h6> </a>
+     								      <h8><i><?php echo $utenti["RUOLO"]?></i></h8><br>
+   											
+					   		<?php if($utenti['FOTO']==NULL) 
+   							   					echo '  <img src="img/profile/default.png"';
+   							   					else echo   '<img src="img/profile/'. $utenti["FOTO"];
+   							   					
+   							   					echo '"class="img-circle" height="75" width="75" alt="Foto utente">';
+   							   					?>
     								     </div>
     							    </div>
-     								   <div class="col-sm-9">
+     								   <div class="col-sm-7">
           								<div class="well">
-         								   <p>Just Forgot that I had to mention something about someone to someone about how I forgot something, but now I forgot it. Ahh, forget it! Or wait. I remember.... no I dont</p>
+          								<p>
+   							   			<?php if($utenti["INFO"]==NUll)
+   							   				echo "Nessuna descrizione";
+   							   				else echo $utenti["INFO"];
+   							   				?>
+   							  </p>
+         								   
     							    	  </div>
       								  </div>
    							   </div>
-   							   ';
-   							   }
-   							   ?>			   
+   							<?php    }?>
+   							   			   
   				</div>
   	</div>
   	
-  		<!-- panello su Idee PUBBLICATE -->
-		        <div class="tab-pane " id="IdeeAzienda">
-			        <?php  /*ZONA IDEE PUBBLICATE */
-			        foreach($ideep as $array => $idea){
+  		<!-- panello su Idee degli UTENTI -->
+		        <div class="tab-pane " id="IdeeUtenti">
+			        <?php  /*ZONA IDEE PUBBLICATE*/
+		        
+			        while( $row1=mysqli_fetch_assoc($result_ideeU) ){
 			        	
-			        	ideaprint(1,$idea['TITOLO'],$idea['DESCRIZIONE'],"http://placehold.it/1024x1280");
+			        	ideaprint(1,$row1['TITOLO'],$row1['DESCRIZIONE'],"http://placehold.it/1024x1280");
 	
 			        }
-			        if(!$ideep)
-			        	echo "Nessuna idea pubblicata dall'azienda.";
-			        
+			        if($num_ideeU==0)
+			        	echo"Nessun idea pubblicata dagli utenti";
 			        ?>
 			        </div>
 	
-		<!-- pannello sulle ide SEGUITE -->
+		<!-- pannello sulle ide dell AZIENDA -->
 				<div class="tab-pane fade" id="IdeeAzienda">
 			        <?php /*ZONA IDEE SEGUITE */
-			        foreach($idees as $array => $idea){
+			         while( $row1=mysqli_fetch_assoc($result_idee) ){
 				        
-			        	ideaprint(1,$idea['TITOLO'],$idea['DESCRIZIONE'],"http://placehold.it/370x150");
+			        	ideaprint(1,$row1['TITOLO'],$row1['DESCRIZIONE'],"http://placehold.it/1024x1280");
 			        	
 			        }
-			        if(!$idees)
-			        	echo "Nessuna idea pubblicata dagli utenti.";
+			        if($num_ideeA==0)
+			        	echo"Nessun idea pubblicata dall' azienda";
 			        ?>
 			    </div>
 			    
